@@ -3,6 +3,11 @@
 	import com.codeazur.as3swf.SWFData;
 	import com.codeazur.as3swf.data.consts.BitmapType;
 	
+	import flash.display.BitmapData;
+	import flash.display.BitmapDataChannel;
+	import flash.display.Loader;
+	import flash.events.Event;
+	import flash.geom.Point;
 	import flash.utils.ByteArray;
 	
 	public class TagDefineBitsJPEG3 extends TagDefineBitsJPEG2 implements IDefinitionTag
@@ -59,6 +64,29 @@
 			return tag;
 		}
 		
+		protected override function exportCompleteHandler(event:Event):void {
+			var loader:Loader = event.target.loader as Loader;
+			var bitmapData:BitmapData = new BitmapData(loader.content.width, loader.content.height);
+			bitmapData.draw(loader);
+			
+			var alphaByteArr:ByteArray = new ByteArray();
+			alphaByteArr.writeBytes(_bitmapAlphaData, 0);
+			alphaByteArr.uncompress();
+			//trace(alphaByteArr.length, bitmapData.width * bitmapData.height);
+			var alphaBMD:BitmapData = new BitmapData(bitmapData.width, bitmapData.height);
+			alphaByteArr.position = 0;
+			for (var h:int = 0; h < alphaBMD.height; h++) 
+			{
+				for ( var w:int = 0; w < alphaBMD.width; w++)
+				{
+					var alpha:uint = alphaByteArr.readUnsignedByte();
+					var alphaColor:uint = alpha << 24;
+					alphaBMD.setPixel32(w,h,alphaColor);
+				}
+			}
+			bitmapData.copyChannel(alphaBMD, bitmapData.rect, new Point(), BitmapDataChannel.ALPHA, BitmapDataChannel.ALPHA);
+			onCompleteCallback(bitmapData);
+		}
 		override public function get type():uint { return TYPE; }
 		override public function get name():String { return "DefineBitsJPEG3"; }
 		override public function get version():uint { return (bitmapType == BitmapType.JPEG) ? 3 : 8; }
